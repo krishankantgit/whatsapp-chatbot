@@ -106,18 +106,6 @@ curl -X POST http://localhost:8080/webhook \
   -d '{"from":"+91-9876543210","message":"what is java?","timestamp":"2024-01-15 10:02:00"}'
 ```
 
-## Deploy on Render (Bonus)
-
-1. Push this project to a GitHub repository
-2. Go to [render.com](https://render.com) and create a new **Web Service**
-3. Connect your GitHub repo
-4. Set these settings:
-   - **Runtime**: Java
-   - **Build Command**: `mvn clean package -DskipTests`
-   - **Start Command**: `java -jar target/whatsapp-chatbot-1.0.0.jar`
-5. Click **Deploy**
-6. Your webhook URL will be: `https://your-app.onrender.com/webhook`
-
 ## Run Tests
 
 ```bash
