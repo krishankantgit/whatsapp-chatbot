@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>WhatsApp Chatbot</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+
+        body {
+          background: #111b21;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+          padding: 0;
+        }
+
+        .wa-app {
+          display: flex;
+          flex-direction: column;
+          width: 100%;
+          max-width: 480px;
+          height: 100vh;
+          background: #0b141a;
+        }
+
+        /* On bigger screens, show as a floating card */
+        @media (min-width: 600px) {
+          body { padding: 20px; background: #0a0f13; }
+          .wa-app {
+            height: 720px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #2a3942;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+          }
+        }
+
+        .wa-header {
+          background: #1f2c34;
+          padding: 10px 16px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-shrink: 0;
+          /* Safe area for phones with notch */
+          padding-top: max(10px, env(safe-area-inset-top));
+        }
+
+        .wa-avatar {
+          width: 40px; height: 40px;
+          border-radius: 50%;
+          background: #00a884;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 15px; font-weight: 600; color: #fff;
+          flex-shrink: 0;
+        }
+
+        .wa-info { flex: 1; }
+        .wa-name { color: #e9edef; font-size: 15px; font-weight: 500; }
+        .wa-status { color: #8696a0; font-size: 12px; }
+        .wa-actions { display: flex; gap: 20px; }
+
+        .wa-bg {
+          flex: 1;
+          background: #0b141a;
+          overflow-y: auto;
+          padding: 12px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .bubble-wrap { display: flex; flex-direction: column; }
+        .bubble-wrap.sent { align-items: flex-end; }
+        .bubble-wrap.recv { align-items: flex-start; }
+
+        .bubble {
+          max-width: 78%;
+          padding: 7px 12px 6px;
+          border-radius: 8px;
+          font-size: 14px;
+          line-height: 1.5;
+          word-break: break-word;
+        }
+
+        @media (max-width: 400px) {
+          .bubble { max-width: 88%; font-size: 13px; }
+        }
+
+        .bubble.sent { background: #005c4b; color: #e9edef; border-bottom-right-radius: 2px; }
+        .bubble.recv { background: #202c33; color: #e9edef; border-bottom-left-radius: 2px; }
+
+        .bubble-meta { display: flex; align-items: center; gap: 4px; justify-content: flex-end; margin-top: 3px; }
+        .bubble-time { font-size: 10px; color: #8696a0; }
+
+        .date-divider { text-align: center; margin: 8px 0; }
+        .date-divider span { background: #182229; color: #8696a0; font-size: 11.5px; padding: 5px 12px; border-radius: 8px; }
+
+        .typing-indicator {
+          display: none; align-items: center; gap: 4px;
+          padding: 10px 14px; background: #202c33;
+          border-radius: 8px; border-bottom-left-radius: 2px;
+          width: fit-content;
+        }
+        .typing-indicator span {
+          width: 7px; height: 7px;
+          background: #8696a0; border-radius: 50%;
+          animation: bounce 1.2s infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: .2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: .4s; }
+        @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+        .quick-bar {
+          background: #111b21;
+          padding: 8px 12px;
+          display: flex; gap: 6px;
+          overflow-x: auto;
+          flex-shrink: 0;
+          border-top: 1px solid #2a3942;
+          -webkit-overflow-scrolling: touch;
+        }
+        .quick-bar::-webkit-scrollbar { display: none; }
+
+        .qbtn {
+          background: #2a3942; border: none;
+          color: #00a884; padding: 6px 14px;
+          border-radius: 20px; font-size: 13px;
+          cursor: pointer; white-space: nowrap;
+          flex-shrink: 0; touch-action: manipulation;
+        }
+        .qbtn:active { background: #3a4a52; }
+
+        .wa-footer {
+          background: #1f2c34;
+          padding: 8px 12px;
+          display: flex; align-items: center; gap: 10px;
+          flex-shrink: 0;
+          padding-bottom: max(8px, env(safe-area-inset-bottom));
+        }
+
+        .wa-footer-left { display: flex; gap: 16px; align-items: center; }
+
+        .wa-input-wrap {
+          flex: 1; background: #2a3942;
+          border-radius: 24px;
+          display: flex; align-items: center;
+          padding: 8px 14px; gap: 8px;
+        }
+
+        .wa-input-wrap input {
+          flex: 1; background: transparent;
+          border: none; outline: none;
+          color: #e9edef; font-size: 15px;
+        }
+        .wa-input-wrap input::placeholder { color: #8696a0; }
+
+        .send-btn {
+          width: 46px; height: 46px;
+          border-radius: 50%; background: #00a884;
+          border: none; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0; touch-action: manipulation;
+        }
+        .send-btn:active { background: #017a62; }
+        .send-btn:disabled { background: #444; }
+
+        .api-bar {
+          background: #0a0f13;
+          padding: 6px 14px;
+          display: flex; align-items: center; gap: 8px;
+          border-top: 1px solid #1a2530;
+          flex-shrink: 0;
+        }
+        .api-dot { width: 7px; height: 7px; border-radius: 50%; background: #00a884; flex-shrink: 0; }
+        .api-dot.offline { background: #f15c6d; }
+        .api-url { font-size: 10px; color: #4a5568; font-family: monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .api-status { font-size: 11px; color: #00a884; flex-shrink: 0; }
+        .api-status.offline { color: #f15c6d; }
+    </style>
+</head>
+<body>
+<div class="wa-app">
+
+    <div class="wa-header">
+        <div class="wa-avatar">WB</div>
+        <div class="wa-info">
+            <div class="wa-name">WhatsApp Chatbot</div>
+            <div class="wa-status" id="wa-status">online</div>
+        </div>
+        <div class="wa-actions">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#8696a0" stroke-width="2"/><path d="m21 21-4.35-4.35" stroke="#8696a0" stroke-width="2" stroke-linecap="round"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8696a0"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+        </div>
+    </div>
+
+    <div class="wa-bg" id="chatBg">
+        <div class="date-divider"><span>Today</span></div>
+        <div class="bubble-wrap recv">
+            <div class="bubble recv">
+                Hello! I am your WhatsApp Chatbot 🤖<br/>
+                Try saying <b>Hi</b> or <b>Bye</b>!
+                <div class="bubble-meta"><span class="bubble-time" id="init-time"></span></div>
+            </div>
+        </div>
+        <div class="bubble-wrap recv" id="typing-wrap" style="display:none">
+            <div class="typing-indicator" id="typing" style="display:flex">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="quick-bar">
+        <button class="qbtn" onclick="sendQuick('Hi')">Hi</button>
+        <button class="qbtn" onclick="sendQuick('Hello')">Hello</button>
+        <button class="qbtn" onclick="sendQuick('Bye')">Bye</button>
+        <button class="qbtn" onclick="sendQuick('help')">help</button>
+        <button class="qbtn" onclick="sendQuick('thanks')">thanks</button>
+        <button class="qbtn" onclick="sendQuick('how are you')">how are you</button>
+    </div>
+
+    <div class="wa-footer">
+        <div class="wa-footer-left">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#8696a0" stroke-width="1.5"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" stroke="#8696a0" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="#8696a0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="wa-input-wrap">
+            <input id="msgInput" type="text" placeholder="Type a message"
+                   onkeydown="if(event.key==='Enter') sendMsg()"/>
+        </div>
+        <button class="send-btn" id="sendBtn" onclick="sendMsg()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+    </div>
+
+    <div class="api-bar">
+        <div class="api-dot" id="apiDot"></div>
+        <div class="api-url">https://whatsapp-chatbot-ys3u.onrender.com/webhook</div>
+        <div class="api-status" id="apiStatusText">connected</div>
+    </div>
+
+</div>
+<script>
+    const API_URL = 'https://whatsapp-chatbot-ys3u.onrender.com/webhook';
+    const FALLBACK = {
+      'hi':'Hello! How can I help you today?',
+      'hello':'Hello! How can I help you today?',
+      'bye':'Goodbye! Have a great day!',
+      'goodbye':'Goodbye! Have a great day!',
+      'help':'Sure! You can say Hi, Bye, or ask about our services.',
+      'thanks':"You're welcome! Is there anything else I can help you with?",
+      'thank you':"You're welcome! Is there anything else I can help you with?",
+      'how are you':"I'm a bot, but I'm doing great! How can I assist you?"
+    };
+    function getFallback(msg) {
+      const m = msg.toLowerCase().trim();
+      for (const k in FALLBACK) { if (m.includes(k)) return FALLBACK[k]; }
+      return "Sorry, I didn't understand that. Type 'help' to see what I can do!";
+    }
+    function getTime() {
+      return new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+    }
+    document.getElementById('init-time').textContent = getTime();
+    function scrollToBottom() {
+      const bg = document.getElementById('chatBg');
+      bg.scrollTop = bg.scrollHeight;
+    }
+    function addBubble(text, isSent) {
+      const bg = document.getElementById('chatBg');
+      const tw = document.getElementById('typing-wrap');
+      const wrap = document.createElement('div');
+      wrap.className = 'bubble-wrap ' + (isSent ? 'sent' : 'recv');
+      const ticks = isSent ? `<svg width="14" height="10" viewBox="0 0 16 11" fill="none"><path d="M1 5.5l4 4L15 1" stroke="#53bdeb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 5.5l4 4" stroke="#53bdeb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>` : '';
+      wrap.innerHTML = `<div class="bubble ${isSent?'sent':'recv'}"><div>${text}</div><div class="bubble-meta"><span class="bubble-time">${getTime()}</span>${ticks}</div></div>`;
+      bg.insertBefore(wrap, tw);
+      scrollToBottom();
+    }
+    function showTyping(v) {
+      document.getElementById('typing-wrap').style.display = v ? 'flex' : 'none';
+      scrollToBottom();
+    }
+    function setApiStatus(online) {
+      document.getElementById('apiDot').className = 'api-dot' + (online?'':' offline');
+      document.getElementById('apiStatusText').className = 'api-status' + (online?'':' offline');
+      document.getElementById('apiStatusText').textContent = online ? 'connected' : 'offline (local fallback)';
+    }
+    async function sendMsg() {
+      const input = document.getElementById('msgInput');
+      const btn = document.getElementById('sendBtn');
+      const msg = input.value.trim();
+      if (!msg) return;
+      input.value = ''; btn.disabled = true;
+      addBubble(msg, true);
+      document.getElementById('wa-status').textContent = 'typing...';
+      showTyping(true);
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({from:'+91-9876543210', message:msg, timestamp:new Date().toISOString().replace('T',' ').slice(0,19)})
+        });
+        const data = await res.json();
+        showTyping(false);
+        addBubble(data.reply || getFallback(msg), false);
+        setApiStatus(true);
+      } catch(e) {
+        showTyping(false);
+        addBubble(getFallback(msg), false);
+        setApiStatus(false);
+      }
+      document.getElementById('wa-status').textContent = 'online';
+      btn.disabled = false;
+      input.focus();
+    }
+    function sendQuick(msg) {
+      document.getElementById('msgInput').value = msg;
+      sendMsg();
+    }
+    scrollToBottom();
+</script>
+</body>
+</html>
